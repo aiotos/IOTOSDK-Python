@@ -1,0 +1,9 @@
+enum
+requests==2.13.0
+zeroc-ice==3.6.3
+modbus_tk
+pyserial
+pywin32
+py-opc
+psutil
+urllib3

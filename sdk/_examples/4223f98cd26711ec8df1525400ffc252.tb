@@ -1,0 +1,252 @@
+{
+    "on": true, 
+    "description": "", 
+    "name": "DemoGate", 
+    "timestamp": 1652434419.0, 
+    "longitude": "114.409906", 
+    "id": "4223f98cd26711ec8df1525400ffc252", 
+    "latitude": "30.490147", 
+    "owner": "self", 
+    "pk": 22, 
+    "config": {
+        "_comment": "网关配置DEMO", 
+        "param": {
+            "Ice.ThreadPool.Client.SizeMax": 500, 
+            "Ice.MessageSizeMax": 10240, 
+            "Colony.Server.Endpoints": "tcp -h 121.36.152.93 -p 10098", 
+            "Cluster.dirIP": "121.36.152.93", 
+            "Ice.ThreadPool.Server.Size": 100, 
+            "Ice.ThreadPool.Server.SizeMax": 500, 
+            "Ice.Warn.Connections": 1, 
+            "Cluster.dirPort": 10001, 
+            "Route.Server.Endpoints": "tcp -h 121.36.152.93 -p 10077", 
+            "Ice.ThreadPool.Client.Size": 100, 
+            "Cluster.routeType": "RS", 
+            "Cluster.routeNet": "WAN"
+        }, 
+        "parentId": null
+    }, 
+    "gateway_uuid": "4223f98cd26711ec8df1525400ffc252", 
+    "properties": {
+        "0ac73c90": {
+            "gateway_id": 22, 
+            "on": false, 
+            "uid": 2, 
+            "timestamp": 1651659519.0, 
+            "gateway_uuid": null, 
+            "description": "", 
+            "data": {
+                "12fc": {
+                    "description": null, 
+                    "readwrite": "1", 
+                    "timestamp": 1652246964672, 
+                    "defaultvalue": "", 
+                    "maxvalue": "999", 
+                    "value": null, 
+                    "minvalue": "0", 
+                    "data_date": null, 
+                    "valuetype": "BOOL", 
+                    "refreshcycle": "0", 
+                    "tpl_id": 33, 
+                    "data_oid": "12fc", 
+                    "regexp": "english", 
+                    "sensibility": "0.1", 
+                    "config": {}, 
+                    "id": 1156, 
+                    "unit": null, 
+                    "name": "网关网络状态"
+                }, 
+                "67a4": {
+                    "description": null, 
+                    "readwrite": "1", 
+                    "timestamp": 1652246964672, 
+                    "defaultvalue": "", 
+                    "maxvalue": "999", 
+                    "value": null, 
+                    "minvalue": "0", 
+                    "data_date": null, 
+                    "valuetype": "BOOL", 
+                    "refreshcycle": "0", 
+                    "tpl_id": 33, 
+                    "data_oid": "67a4", 
+                    "regexp": "english", 
+                    "sensibility": "0.1", 
+                    "config": {}, 
+                    "id": 1157, 
+                    "unit": null, 
+                    "name": "设备网络状态"
+                }, 
+                "9191": {
+                    "description": null, 
+                    "readwrite": "1", 
+                    "timestamp": 1652246964672, 
+                    "defaultvalue": "", 
+                    "maxvalue": "999", 
+                    "value": null, 
+                    "minvalue": "0", 
+                    "data_date": null, 
+                    "valuetype": "FLOAT", 
+                    "refreshcycle": "0", 
+                    "tpl_id": 33, 
+                    "data_oid": "9191", 
+                    "regexp": "english", 
+                    "sensibility": "0.1", 
+                    "config": {}, 
+                    "id": 1159, 
+                    "unit": null, 
+                    "name": "设备持续在线时长"
+                }, 
+                "1f22": {
+                    "description": null, 
+                    "readwrite": "1", 
+                    "timestamp": 1652246964672, 
+                    "defaultvalue": "", 
+                    "maxvalue": "999", 
+                    "value": null, 
+                    "minvalue": "0", 
+                    "data_date": null, 
+                    "valuetype": "FLOAT", 
+                    "refreshcycle": "0", 
+                    "tpl_id": 33, 
+                    "data_oid": "1f22", 
+                    "regexp": "english", 
+                    "sensibility": "0.1", 
+                    "config": {}, 
+                    "id": 1158, 
+                    "unit": null, 
+                    "name": "网关持续运行时长"
+                }, 
+                "92e8": {
+                    "description": "", 
+                    "readwrite": "0", 
+                    "timestamp": 1652246964672, 
+                    "defaultvalue": "", 
+                    "maxvalue": "999", 
+                    "value": null, 
+                    "minvalue": "0", 
+                    "data_date": null, 
+                    "valuetype": "STRING", 
+                    "refreshcycle": "10", 
+                    "tpl_id": 33, 
+                    "data_oid": "92e8", 
+                    "regexp": "^\\s*|\\s*$", 
+                    "sensibility": "0.1", 
+                    "config": {
+                        "disabled": false, 
+                        "_comment": "", 
+                        "proxy": {
+                            "index": -1, 
+                            "pointer": null
+                        }, 
+                        "param": {}, 
+                        "parentId": null
+                    }, 
+                    "id": 1161, 
+                    "unit": "", 
+                    "name": "字符数据"
+                }, 
+                "f4e9": {
+                    "description": "", 
+                    "readwrite": "0", 
+                    "timestamp": 1652246964672, 
+                    "defaultvalue": "", 
+                    "maxvalue": "999", 
+                    "value": null, 
+                    "minvalue": "0", 
+                    "data_date": null, 
+                    "valuetype": "BOOL", 
+                    "refreshcycle": "10", 
+                    "tpl_id": 33, 
+                    "data_oid": "f4e9", 
+                    "regexp": "^\\s*|\\s*$", 
+                    "sensibility": "0.1", 
+                    "config": {
+                        "disabled": false, 
+                        "_comment": "", 
+                        "proxy": {
+                            "index": -1, 
+                            "pointer": null
+                        }, 
+                        "param": {}, 
+                        "parentId": null
+                    }, 
+                    "id": 1162, 
+                    "unit": "", 
+                    "name": "开关数据"
+                }, 
+                "5686": {
+                    "description": "", 
+                    "readwrite": "0", 
+                    "timestamp": 1652246964672, 
+                    "defaultvalue": "", 
+                    "maxvalue": "999", 
+                    "value": null, 
+                    "minvalue": "0", 
+                    "data_date": null, 
+                    "valuetype": "INT", 
+                    "refreshcycle": "10", 
+                    "tpl_id": 33, 
+                    "data_oid": "5686", 
+                    "regexp": "^\\s*|\\s*$", 
+                    "sensibility": "0.1", 
+                    "config": {
+                        "disabled": false, 
+                        "_comment": "", 
+                        "proxy": {
+                            "index": -1, 
+                            "pointer": null
+                        }, 
+                        "param": {}, 
+                        "parentId": null
+                    }, 
+                    "id": 1160, 
+                    "unit": "", 
+                    "name": "整数数据"
+                }, 
+                "75de": {
+                    "description": "", 
+                    "readwrite": "0", 
+                    "timestamp": 1652246964672, 
+                    "defaultvalue": "", 
+                    "maxvalue": "999", 
+                    "value": null, 
+                    "minvalue": "0", 
+                    "data_date": null, 
+                    "valuetype": "FLOAT", 
+                    "refreshcycle": "10", 
+                    "tpl_id": 33, 
+                    "data_oid": "75de", 
+                    "regexp": "^\\s*|\\s*$", 
+                    "sensibility": "0.1", 
+                    "config": {
+                        "disabled": false, 
+                        "_comment": "", 
+                        "proxy": {
+                            "index": -1, 
+                            "pointer": null
+                        }, 
+                        "param": {}, 
+                        "parentId": null
+                    }, 
+                    "id": 1163, 
+                    "unit": "", 
+                    "name": "浮点数据"
+                }
+            }, 
+            "device_oid": "0ac73c90", 
+            "tpl_id": 33, 
+            "type": "", 
+            "config": {
+                "bind": {}, 
+                "driver": "python/dr_demo.DemoDriver", 
+                "param": {
+                    "sub": []
+                }, 
+                "parentid": null
+            }, 
+            "id": 36, 
+            "name": "DemoDevice"
+        }
+    }, 
+    "uid": 2
+}

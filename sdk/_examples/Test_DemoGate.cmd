@@ -1,0 +1,1 @@
+python iotosEngine.py --u test --p 123456 --i 4223f98cd26711ec8df1525400ffc252 --h http://sys.aiotos.net
