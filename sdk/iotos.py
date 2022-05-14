@@ -123,7 +123,6 @@ class RunCollectingThread(threading.Thread, JLib):
             driverInstance = None
             if 'driver' in devCfg:
                 nameGroupTmp = devCfg['driver'].split('.')
-                logger.debug(nameGroupTmp)
                 importcfg = (nameGroupTmp[0]).split("/")
                 if importcfg != '' and importcfg[0] == 'python':
                     try:
@@ -147,14 +146,16 @@ class RunCollectingThread(threading.Thread, JLib):
                         self.zm.m_dev2driver.update({devid: driverInstance})
                     # print self.zm.m_dev2driver
                     except Exception as e:
-                        logger.error(nameGroupTmp, exc_info=1)
+                        traceback.print_exc()
+                        pass
                 else:
-                    logger.error(u'device' + devid + u'config error!')
+                    print(u'device' + devid + u'config error!')
             else:
-                logger.warning(u'device' + devid + u'no driver found!')
+                print(u'device' + devid + u'no driver found!')
 
         except Exception as e:
-            logger.error(e, exc_info=1)
+            traceback.print_exc()
+            pass
 
     def stop(self):
         self.zm.eventcount = self.zm.eventcount - 1
@@ -164,28 +165,19 @@ class RunCollectingThread(threading.Thread, JLib):
 
     def run(self):
         while True:
-            try:  # 主要是m_dev2driver[devid]可能空
+            try:  
                 self.zm.eventcount = self.zm.eventcount + 1
                 if self.devid in self.zm.m_dev2driver:
                     self.stopt = True
-
-                    # 【待处理】是否应该放到设备采集线程构造中去？设备采集线程创建的通信连接实例，在callback控制线程Event_xxx中，一般使用会有问题！
                     drtmp = self.zm.driver(self.devid)
                     attrstmp = drtmp.sysAttrs
                     attrstmp.update({'data': drtmp.data2attrs})
-
-                    # 设备驱动（通信）初始化，放到线程中，有三处好处：
-                    # 1、初始化过程若有延时超时，不影响其他设备驱动同步进行；
-                    # 2、如果通信中存在阻塞死循环等待，如tcp server监听，那么也不影响
-                    # 3、可保证通信实例与采集线程在同一个线程，避免通信实例不可用，如opc
                     try:
-                        # 在启动阶段就出现异常，直接退出。不然还以为驱动是正常运行的
                         drtmp.InitComm(attrstmp)
                     except Exception as dr_ex:
                         logger.error(u'%s,驱动初始化异常', attrstmp['name'], exc_info=True)
                         sig_kill()
                         sys.exit(-1)
-
                     while True:
                         if self.stopt == False:
                             logger.warn(u'采集线程检测到标记，准备退出! ' + drtmp.sysId)
@@ -195,25 +187,17 @@ class RunCollectingThread(threading.Thread, JLib):
                         for point_id in data_id_list:
                             if self.zm.restor_collect:
                                 break
-
-                            # if self.zm.pause_collect:
-                            #	self.threadEvent.wait()
-
-                            # altered by lrq 20200711 change self.zm.pause_collect to drtmp.pauseCollect
                             while drtmp.pauseCollect:
                                 pass
 
                             dataId = point_id.split('.')[2]
 
                             try:
-                                # 循环采集间隔
                                 refreshCycletmp = int(drtmp.data2attrs[dataId]['refreshcycle']) / 1000.0
                                 if refreshCycletmp:
                                     logger.info(u'----------	 according to config, will sleep for ' + str(
                                         refreshCycletmp) + 's ... 	--------------')
                                     time.sleep(refreshCycletmp)
-
-                                # 采集禁用识别
                                 if 'disabled' in drtmp.data2attrs[dataId]['config']:
                                     if drtmp.data2attrs[dataId]['config']['disabled'] == True:
                                         self.warn('data disabled: ' + dataId + '\n')
@@ -224,11 +208,9 @@ class RunCollectingThread(threading.Thread, JLib):
 
                             valret = drtmp.Collecting(dataId)
                             try:
-                                # 当派生类驱动实例并没有重写实现采集collecting，那么就自动基类返回，则不上传值，当作不启动采集引擎！
                                 if valret is not None and len(valret):  # 否则，返回值为None或空()
                                     self.collecting_continuous_failed_count = 0  # 设备采集正常返回，复位连续采集错误计数
                                     if len(valret) == 1:  # 返回一个值，就调用pubMsg()
-                                        # self.info('pub single data...')
                                         rettmp = drtmp.setValue(drtmp.name(dataId), valret[0])
                                         error_check(rettmp)
                                     else:  # len(valret) >= 2:					#返回多个值，就调用pubMsgs()
@@ -242,7 +224,6 @@ class RunCollectingThread(threading.Thread, JLib):
                                             if proxyedId in self.proxyIndex2DataId.keys():  # 如果此前有记录对应这个
                                                 id_tobe_find_tmp = self.proxyIndex2DataId[proxyedId]
                                             else:
-                                                # 一个点一个点去遍历，找被当前采集点代理的数据点
                                                 for idtmp, attrtmp in drtmp.data2attrs.items():
                                                     try:
                                                         proxyId = attrtmp['config']['proxy']['pointer']
@@ -265,8 +246,7 @@ class RunCollectingThread(threading.Thread, JLib):
                                                 self.error(u'未找到批量返回值对应的数据点：' + dataId + "." + str(i))
                                         jsmsg = []
                                         self.info('pub multiple datas...')
-                                        rettmp = json.loads(drtmp.setValues(
-                                            value_list))  # add by kk 20210909 增加批量上报建荣,文档中应未list的现针对json增加list
+                                        rettmp = json.loads(drtmp.setValues(value_list)) 
                                         if type(rettmp).__name__ == 'dict':
                                             tmp = []
                                             tmp.append(json.loads(drtmp.setValues(value_list)))
@@ -285,7 +265,6 @@ class RunCollectingThread(threading.Thread, JLib):
                                         if iserror:
                                             self.zm.exit_to_reboot()
                                             continue
-                                # 只有驱动程序返回None时才进行采集错误计数，对于返回空的元组()，只不做解析上报，并不认为是出错，所以要与驱动开发约定，异常错误才返回None！
                                 elif valret == None:
                                     self.collecting_continuous_failed_count += 1
                                     logger.warn(u'连续采集错误计数 ' + str(self.collecting_continuous_failed_count))
@@ -315,13 +294,11 @@ class RunCollectingThread(threading.Thread, JLib):
                         break
                 else:
                     raise Exception(u'设备驱动实例不存在！')
-                    # added by lrq 20200809 1分钟后再自动重试，避免偶尔出现的重启后加载这里报错，驱动采集不执行
                     time.sleep(60)
                     self.zm.exit_to_reboot()
             except Exception as e:
                 traceback.print_exc()
                 raise e
-
 
 class WebSessionRefreshThread(threading.Thread):
     iceService = None
@@ -367,9 +344,7 @@ class IOTOSys(CallbackReceiver, JLib):
     @property
     def uuidsession(self):
         return self.iceService.uuidSession
-
     m_table = None  # type: dict
-
     def __init__(self):
         CallbackReceiver.__init__(self)
         JLib.__init__(self)
@@ -393,7 +368,7 @@ class IOTOSys(CallbackReceiver, JLib):
         self.password = ''
         self.hb = None
         self.strat_collect = True
-        self.pause_collect = False  # tip by lrq 20200711,由网关全局的采集启停标记，改为由各驱动实例本身单独标记，避免设备驱动之间相互影响，比如某个设备上线了，不要影响触发其他未上线设备的采集！
+        self.pause_collect = False 
         self.restor_collect = False
         self.strat_connect = True
         self.event = threading.Event()
@@ -465,8 +440,6 @@ class IOTOSys(CallbackReceiver, JLib):
         info = json.loads(data)
         info_type = info['type']
         result = {'code': 0, 'msg': 'OK', 'data': info}
-        # 登入之后操作数据库库出现延时，但又有数据过来的时候会出现以下问题：
-        # self.prx还没来得及初始化
         if self.prx:
             # 连接网络，连接复位
             if info_type == "ioServerConnectServer" or info_type == "ioServerReConnectServer":
@@ -516,14 +489,12 @@ class IOTOSys(CallbackReceiver, JLib):
                     try:
                         for i, j in points["properties"].items():
                             device_id = i
-                            data_id = list(j["data"].keys())[
-                                0]  # 前面加上list，解决用python3跑驱动时数据点下发时出现TypeError: 'dict_keys' object is not subscriptable
+                            data_id = list(j["data"].keys())[0]
 
                         point = ionode_id + '.' + device_id + '.' + data_id
                         devid = ionode_id + '.' + device_id
                         data_value = points["properties"][device_id]["data"][data_id]["value"]
                     except KeyError:
-                        # 这里由可能是webice数据下发时，先于在用户完成登录初始化前接收到下发数据，此时m_table是没有值的。所以会触发keyerror
                         logger.error(info, exc_info=True)
                     # 读写属性
                     readwrite = None
@@ -550,8 +521,6 @@ class IOTOSys(CallbackReceiver, JLib):
                     if info_type == "getData":
                         if int(readwrite) == 2:
                             return json.dumps({"code": 515, "msg": "PropertyNotValid", "data": None})
-
-                        # 传给用户驱动程序的是剥离掉接入点、设备ID之后纯粹监测点ID，因为用户驱动本身知道自己对应的设备ID，只用data_id就可以唯一识别对应自己的监测点接口
                         try:
                             result = self.driver(devid).Event_getData(data_id, data_value)
                             # 检查用户返回格式
@@ -563,7 +532,6 @@ class IOTOSys(CallbackReceiver, JLib):
                             result = self._cmd_data(point, result)
                         except Exception as e:
                             raise e
-
                     if info_type == "setData":
                         if int(readwrite) == 1:
                             return json.dumps({"code": 515, "msg": "PropertyNotValid", "data": None})
@@ -596,8 +564,6 @@ class IOTOSys(CallbackReceiver, JLib):
                         except Exception as e:
                             logger.error("", exc_info=True)
                             raise e
-
-                    # 同一个账户下订阅的资源对应的接入点下的监测点，数据发布都会派发到账户下所有在线的接入点！！而每个接入点又会派发到所有的设备驱动插件去！
                     if info_type == 'syncPubMsg':
                         # 如果存在config中的filter则过滤只要他
                         try:
@@ -607,8 +573,6 @@ class IOTOSys(CallbackReceiver, JLib):
                                 if de_id == '*':
                                     for did, devdr in self.m_dev2driver.items():
                                         if devdr is not None:
-                                            # 订阅发布过来的监测点就要带全id，因为不是自己接入点下自己设备下的点！
-
                                             result = self.driver(did).Event_syncPubMsg(point, data_value)
                                             # 检查用户返回格式
                                             ret = self._ret(result)
@@ -626,8 +590,6 @@ class IOTOSys(CallbackReceiver, JLib):
                             raise e
                             for did, devdr in self.m_dev2driver.items():
                                 if devdr is not None:
-                                    # 订阅发布过来的监测点就要带全id，因为不是自己接入点下自己设备下的点！
-
                                     result = self.driver(did).Event_syncPubMsg(point, data_value)
                                     # 检查用户返回格式
                                     ret = self._ret(result)
@@ -661,7 +623,6 @@ class IOTOSys(CallbackReceiver, JLib):
                         t.start()
 
                 if info_type == "sendMsg":
-                    # 对接入点而不是对设备监测点的访问，那么会转为对全部设备驱动的访问，因为只有设备驱动才开放给用户的，接入点的处理是封装到SDK中的！
                     retArray = []
                     for did, devdr in self.m_dev2driver.items():
                         if devdr is not None:
@@ -752,7 +713,7 @@ class IOTOSys(CallbackReceiver, JLib):
         作者：lrq
         日期：20200409
         功能：当个的数据点jsons数组进行通个网关、同网关同设备进行合并，将某些数组元素合并到元素对象中去
-    输入参数：如下格式的json数组
+        输入参数：如下格式的json数组
             [
                 {
                     "id": "73eca5dc254d11eaa4fb000c2988ff06", 
@@ -771,7 +732,6 @@ class IOTOSys(CallbackReceiver, JLib):
       返回值：合并后的json数组
     修改记录：
     '''
-
     def _points_merged(self, pointsArr):
         mergedArr = []
 
@@ -914,9 +874,11 @@ class IOTOSys(CallbackReceiver, JLib):
         self.password = password
         self.uuid = uuid
         self.s_name = s_name
+        self.http_host = host
         data = {'username': self.username, 'password': self.password, 'uuid': self.uuid, 'httpHost': self.http_host}
 
         try:
+            self.info('HTTP_HOST: ' + host)
             r = self.iceService.login(webLoginParam=WebLoginParam(**data), callBackReceiver=self)
             r = r.to_dict()
             result = json.dumps({'code': 0, 'msg': 'OK'})
