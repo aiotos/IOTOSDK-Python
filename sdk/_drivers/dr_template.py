@@ -176,7 +176,7 @@ class TemplateDriver(IOTOSDriverI):
 		Parameter
 		  dataId: string 当前数据点全局标识id，示例如"0b2e"
 		Return
-		  tuple: () 元组类型返回，多个不同类型数据的顺序组合，比如modbus批量采集数据后多个值的返回。20220430留意待修复BUG：
+		  tuple: () 元组类型返回，多个不同类型数据的顺序组合，比如modbus批量采集数据后多个值的返回。
 			[*]应该支持多类型返回，常规数值类型，或元组都可以，目前直接返回dataId，报错；返回(dataId)报错；返回[dataId]才可以！
 		'''
 		'''
@@ -245,12 +245,11 @@ class TemplateDriver(IOTOSDriverI):
 				"sub": [
 						"1bcd6b35.*"
 					],
-				"yczAddress":"10 00 00 00 08"
 			}
 		}
 		Parameter
 			point: string 当前数据点全ID（网关标识.设备标识.数据点标识），示例如"9003f858c85011ecbb02525400ffc252.e2c4f6fe.0b2e"，id难以辨别可通过self.name()转换
-			value: 上报对应的值，由数据点自身属性来决定类型，通常为Bool或String
+			value: 上报对应的值，由数据点自身属性来决定类型，通常为Bool/String/Int/Float
 		Return
 		  	string: string类型返回。注意同网关下不同设备的订阅为异步，可以默认返回或不返。兼容高级用途跨网关远程数据点订阅，返回值解释略
 		'''
