@@ -19,48 +19,7 @@ import re
 import struct
 import math
 
-#硬件心跳线程
-class RunHardwareHeartbeatThread(threading.Thread,JLib):
-    def __init__(self, driver):
-        threading.Thread.__init__(self)
-        JLib.__init__(self)
-        self.driver = driver
-    def run(self):
-        statetmp = False
-        dataIdTmp = ''
-        recycletmp = 0
-        for dataId,attrs in self.driver.data2attrs.items():
-            if 'param' not in attrs['config']:
-                self.error(attrs['config'])
-                break
-            if 'hbt' in attrs['config']['param']:
-                dataIdTmp = dataId
-                recycletmp = attrs['config']['param']['hbt']
-                break
-        while True:
-            try:
-                if not self.driver.startHeartbeat:
-                    return
-
-                #状态反转及延时
-                if statetmp == False:
-                    statetmp = True
-                else:
-                    statetmp = False
-                time.sleep(recycletmp)
-
-                # self.warn('HARDWARE HEATBEAT ' + dataIdTmp + u'硬件心跳：' + str(statetmp))
-                #控制执行
-                rettmp = ''
-                if statetmp:
-                    rettmp = self.driver.Event_setData(dataIdTmp,'true')
-                else:
-                    rettmp = self.driver.Event_setData(dataIdTmp,'false')
-                if json.loads(rettmp)["code"] == 0:
-                    self.driver.setValue(self.driver.name(dataIdTmp), statetmp)
-            except Exception,e:
-                traceback.print_exc(e.message)
-                continue
+#TIPS 20220524：请用python2.x，目前python3.x对modbus_tk中寄存器配置不完全兼容，可能会运行异常！
 
 class ModbusDriver(IOTOSDriverI):
     def __init__(self):
@@ -74,69 +33,31 @@ class ModbusDriver(IOTOSDriverI):
     # 1、通信初始化
     def InitComm(self, attrs = None):
         try:
-            #一、tcp端口监听
-            self.__port = self.sysAttrs['config']['param']['tcp']
-            self.__tcpServer = TcpServerThread(self,self.__port)
-            self.__tcpServer.setDaemon(True)
-            self.__tcpServer.start()
-            self.debug(self.sysAttrs['name'] + u' TCP端口' + str(self.__port) + u"已启动监听！")
+            paramstmp = self.sysAttrs['config']['param']['serial']
+            serial_params_tmp = [param for param in paramstmp.strip().split(',')]
+            self.comport = serial_params_tmp[0]
+            self.master = modbus_rtu.RtuMaster(serial.Serial(
+                port=self.comport,                 #串口号   COM1
+                baudrate=int(serial_params_tmp[1]),        #波特率   9600
+                bytesize=int(serial_params_tmp[3]),        #位数     8
+                parity=serial_params_tmp[2],               #奇偶校验  N
+                stopbits=1
+                ))
+            if self.master:
+                self.online(True)
+                self.master.set_timeout(5)
+                self.master.set_verbose(False)
+                self.debug(self.sysAttrs['name'] + u' 串口' + self.comport + u'已打开！')
+                self.setPauseCollect(False)
+                self.setCollectingOneCircle(False)
 
-            #二、创建串口1 <=> 串口2
-            serialtmp = self.sysAttrs['config']['param']['serial']
-            self.__serial = SerialDtu(serialtmp)
-            self.__serial.setCallback(self.serialCallback)
-            self.__serial.open()
-
-            #三、串口1 <=> modbus_tk
-            self.master = modbus_rtu.RtuMaster(self.__serial.serial)
-            self.master.set_timeout(5)
-            self.master.set_verbose(False)
-            self.debug(self.sysAttrs['name'] + u' 串口' + self.__serial.portName() + u'已打开！')
-
-            self.zm.pauseCollect = True
-            # 实例化硬件心跳线程
-            RunHardwareHeartbeatThread(self).start()
-
-        except Exception,e:
+        except Exception as e:
             self.online(False)
             traceback.print_exc(u'通信初始化失败' + e.message)
 
-    #四、串口2 <=> tcp
-    #tcp => 串口2
-    def tcpCallback(self,data):
-        datastr = self.str2hex(data)
-        self.sourceDataIn = data
-        self.info("Master < < < < < < Device: " + datastr)
-        self.__serial.send(data)
-        # if datastr[0] == '1' or datastr[0] == '2' or datastr[0] == '7':
-        #     # self.__serial.send(data)
-        #     pass
-        # else:
-        #     self.warn(u'modbus设备地址位为1、2以外的都作为非法数据，返回数将忽略.' + str(datastr[0]))
-
-    #tcp <= 串口2
-    def serialCallback(self,data):
-        self.info("Master > > > > > > Device: " + self.str2hex(data))
-        self.__tcpServer.send(data)
-
-    #连接状态回调
-    def connectEvent(self,state):
-        self.online(state)
-        try:
-            if state == True:
-                self.warn('连接成功，启动采集、心跳')
-                self.pauseCollect = False
-                #启动软件看门狗
-                self.startHeartbeat = True
-            else:
-                self.warn('连接断开，将关闭采集和心跳！')
-                self.startHeartbeat = False
-                self.pauseCollect = True
-        except Exception,e:
-            self.error(u'硬件心跳错误, ' + e.message)
-
     # 2、采集
     def Collecting(self, dataId):
+        self.warn(dataId)
         try:
             rtu_ret = ()
             cfgtmp = self.data2attrs[dataId]['config']
@@ -180,7 +101,7 @@ class ModbusDriver(IOTOSDriverI):
                 elif format.find('?') != -1:           #对于功能号1、2的开关量读，开关个数，对于这种bool开关型，个数就不是返回字节数的两倍了！返回的字节个数是动态的，要字节数对应的位数总和，能覆盖传入的个数数值！
                     quantity *= 1
                     format = ''                        #实践发现，对于bool开关型，传入开关量个数就行，format保留为空！如果format设置为 "?"或"8?"、">?"等，都会解析不正确！！
-                self.debug('>>>>>>' + '(PORT-' + str(self.__port) + ')' + str(devid) + ' ' + str(funid) + ' ' + str(regad) + ' ' + str(quantity) + ' ' + str(format))
+                self.debug('>>>>>>' + '(Serial-' + str(self.comport) + ')' + str(devid) + ' ' + str(funid) + ' ' + str(regad) + ' ' + str(quantity) + ' ' + str(format))
                 rtu_ret = self.master.execute(devid, funid, regad, quantity,data_format=format)
 
                 #added by lrq 20200116 私有modbus解析支持，煤矸石项目
@@ -237,9 +158,6 @@ class ModbusDriver(IOTOSDriverI):
                         tes = struct.unpack('>h', bytes_tmp)[0]
                         self.info("float info >>>>>>>>>>>>" + str(tes))
                         rtu_ret = tuple([tes])    #只返回一个数据时，需要tuple([val])，来实现单个数据的Collecting返回！
-
-
-
                 else:
                     if funid == 3:
                         retlist = []
@@ -255,12 +173,11 @@ class ModbusDriver(IOTOSDriverI):
             # 一组功能号内的数据点，不进行遍历采集！跳过！
             else:
                 return ()   #注意，这种情况下不是采集错误，如果返回None，那么会当作采集错误处理，进行采集错误计数了！！
-        except ModbusInvalidResponseError, e:
-            self.error(u'MODBUS响应超时, ' + e.message)
+        except ModbusInvalidResponseError as e:
+            self.error(e)
             return None
-        except Exception, e:
-            traceback.print_exc(e.message)
-            self.error(u'采集解析参数错误：' + e.message)
+        except Exception as e:
+            self.error(e.message)
             return None
 
     # 3、控制 数据点配置
@@ -298,7 +215,7 @@ class ModbusDriver(IOTOSDriverI):
             ret = self.master.execute(1, cst.WRITE_MULTIPLE_COILS, 0, output_value=self.bitsState)
             self.warn(ret)
             return json.dumps({'code': 0, 'msg': u'操作成功！', 'data': list(ret)})
-        except Exception,e:
+        except Exception as e:
             return json.dumps({'code': 501, 'msg': u'操作失败，错误码501，' + e.message, 'data': None})
 
     # 事件回调接口，监测点操作访问
