@@ -17,7 +17,10 @@ from library.iotos_util import sdk_logger as logger
 # 心跳维持
 class JLib(object):
     def __init__(self):
-        self.logger = logger
+        # reuse by lrq 20220527 logging instead of logger to resolve useless of debug、info
+        # self.logger = logger
+        self.logger = logging
+
         #日志交给supervisor守护进程来做，他可以设置日志文件大小参数，以及日志文件个数，自动清理，并且可以通过通过web来查看滚动日志！
         # # 创建TimedRotatingFileHandler对象
         # rht = TimedRotatingFileHandler(filename="./iotos.log", when="D", interval=1, backupCount=7)
@@ -26,30 +29,27 @@ class JLib(object):
         # # fmt = logging.Formatter("%(asctime)s %(pathname)s %(filename)s %(funcName)s %(lineno)s %(levelname)s - %(message)s", "%Y-%m-%d %H:%M:%S")
         # self.logger.addHandler(rht)
 
-        #no print???? edit by lrq 220513
-        # self.debug = self.logger.debug
-        # self.info = self.logger.info
-        # self.warn = self.logger.warn
-        # self.error = self.logger.error
-        # self.critical = self.logger.critical
-        # self.exception = self.logger.exception
-
-        # replace by:
-        self.debug = logging.debug
-        self.info = logging.info
-        self.warn = logging.warn
-        self.error = logging.error
-        self.critical = logging.critical
-        self.exception = logging.exception
+        self.debug = self.logger.debug
+        self.info = self.logger.info
+        self.warn = self.logger.warn
+        self.error = self.logger.error
+        self.critical = self.logger.critical
+        self.exception = self.logger.exception
 
     def str2hex(self,s):
-        return ' '.join([hex(ord(c)).replace('0x', '') for c in s])
+        if sys.version > '3':
+            return ' '.join([hex(c).replace('0x', '') for c in s])
+        else:
+            return ' '.join([hex(ord(c)).replace('0x', '') for c in s])
 
     def hex2str(self,s):
         return ''.join([chr(i) for i in [int(b, 16) for b in s.split(' ')]])
 
     def str2bin(self,s):
-        return ' '.join([bin(ord(c)).replace('0b', '') for c in s])
+        if sys.version > '3':
+            return ' '.join([bin(c).replace('0b', '') for c in s])
+        else:
+            return ' '.join([bin(ord(c)).replace('0b', '') for c in s])
 
     def bin2str(self,s):
         return ''.join([chr(i) for i in [int(b, 2) for b in s.split(' ')]])
@@ -57,6 +57,7 @@ class JLib(object):
     def pack(self,expression,data):
         return struct.pack(expression,data)[0]
 
+    #tips: simple packaging only for user to omit [0] while data is single byte
     def unpack(self,expression,data):
         if type(data) is int:
             data = data.to_bytes(length=1, byteorder='big')

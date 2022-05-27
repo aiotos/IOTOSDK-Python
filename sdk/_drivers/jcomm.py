@@ -18,16 +18,19 @@ class TcpServer(StreamServer,JLib):
         StreamServer.__init__(self, listener,handle = self.echo, **kwargs)
         JLib.__init__(self)
 
-    def setCallback(self,driver):
+    def setCallback(self,driver,cbData = None,cbEvent = None):
         self.driver = driver
-        self.__callback = driver.tcpCallback
-        self.__connectEvent = driver.connectEvent
+        self.__callback = (cbData,driver.tcpCallback)[cbData == None]
+        self.__connectEvent = (cbEvent, driver.connectEvent)[cbEvent == None]
 
     # this handler will be run for each incoming connection in a dedicated greenlet
     def echo(self, socket, address):
         self.deviceSockets.append(socket)
         serverInfo = 'server ' + str(self.port)
-        socket.sendall(b'welcome to iotos!.\r\n')
+
+        #temp edit by lrq 20220501,avoid response mechanism
+        #socket.sendall(b'welcome to iotos!.\r\n')
+
         # using a makefile because we want to use readline()
         self.warn(serverInfo +  ' client %s:%s connected.' % address)
         self.__connectEvent(True)
@@ -37,7 +40,7 @@ class TcpServer(StreamServer,JLib):
                 line = None
                 line = socket.recv(8192)
             except Exception as e:
-                self.error('recv eror' + ' : ' + e.message)
+                self.exception(e)
                 self.driver.zm.exit_to_reboot()
                 continue
             if not line:
@@ -54,16 +57,16 @@ class TcpServer(StreamServer,JLib):
                     self.deviceSockets.remove(socket)
                 break
             try:
-                if line.strip().lower().find('this is iotos admin') >=0:
+                if line.strip().lower().find(b'this is iotos admin') >=0:
                     self.warn(u'IOTOS管理员进入.')
                     self.iotosAdmin = socket
-                    socket.sendall('iotos admin recognized!')
+                    socket.sendall(b'iotos admin recognized!')
                     self.deviceSockets.remove(socket)
                     continue
-                if line.strip().lower().find('this is iotos proxy') >=0:
+                if line.strip().lower().find(b'this is iotos proxy') >=0:
                     self.warn(u'IOTOS代理连入.')
                     self.iotosProxy = socket
-                    socket.sendall('iotos proxy recognized!')
+                    socket.sendall(b'iotos proxy recognized!')
                     self.deviceSockets.remove(socket)
                     continue
 
@@ -86,7 +89,7 @@ class TcpServer(StreamServer,JLib):
                     self.warn('setting callback error!')
 
             except Exception as e:
-                self.error(e.message)
+                self.exception(e)
 
         rfileobj.close()
         self.__connectEvent(False)
@@ -97,7 +100,7 @@ class TcpServer(StreamServer,JLib):
             if self.iotosAdmin:
                 self.iotosAdmin.sendall(value)
         except Exception as e:
-            traceback.print_exc(e.message)
+            traceback.print_exc(e)
 
         #广播连接到同个端口的多个设备
         try:
@@ -107,7 +110,7 @@ class TcpServer(StreamServer,JLib):
             #连接断开时，tcp句柄清空！
             self.deviceSockets = []
             self.__connectEvent(False)
-            traceback.print_exc(u'send error：' + e.message)
+            self.exception(e)
 
     def open(self,ip_port = None):
         self.serve_forever()
@@ -238,7 +241,7 @@ class ExchangeDataThread(threading.Thread,JLib):
                     else:
                         os.write(self.__m, data)
             except Exception as e:
-                traceback.print_exc(e.message)
+                traceback.print_exc(e)
 
 ##串口类
 #注意，虽然导入时serial，但是必须有安装pyserial模块！！不是仅仅serial就行的！
@@ -287,7 +290,7 @@ class SerialDtu(threading.Thread,JLib):
                                  bytesize= int(self.serial_params[3]),       #位数     8
                                  stopbits = int(self.serial_params[4]))      #停止位   1
         except Exception as e:
-            self.error('open failed!' + e.message + '.retrying…')
+            self.error('open failed!' + str(e) + '.retrying…')
             return None
 
     def run(self):
@@ -300,7 +303,7 @@ class SerialDtu(threading.Thread,JLib):
                     # self.info('------>>' + ''.join(format(x, ' 02x') for x in dataHex))
                     self.__callback(dataHex)
             except Exception as e:
-                traceback.print_exc(e.message)
+                traceback.print_exc(e)
 
     def send(self,value):
         if self.serial2 is None:

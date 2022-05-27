@@ -878,7 +878,7 @@ class IOTOSys(CallbackReceiver, JLib):
         data = {'username': self.username, 'password': self.password, 'uuid': self.uuid, 'httpHost': self.http_host}
 
         try:
-            self.info('HTTP_HOST: ' + host)
+            self.info('HTTP_HOST: ' + host + ' logining...')
             r = self.iceService.login(webLoginParam=WebLoginParam(**data), callBackReceiver=self)
             r = r.to_dict()
             result = json.dumps({'code': 0, 'msg': 'OK'})
@@ -888,6 +888,7 @@ class IOTOSys(CallbackReceiver, JLib):
                 # self.communicator = self._get_communicator()
 
                 # 如果传了host，那self.server_ip直接用host
+                self.info('login succeed!')
                 self.server_ip = str(r["router_config"]["iotrouterIP"])
                 if host:
                     if host[-1] == "/":
@@ -916,10 +917,13 @@ class IOTOSys(CallbackReceiver, JLib):
                     with open(uuid + ".tb", "w") as f:
                         pass
                 # 获取后台点表数据
+                self.info('querying tablelist...')
                 table_info_ice = self.iceService.getTableDetail()
                 table_info_ice = json.loads(table_info_ice)
                 if int(table_info_ice["code"]) != 0:
+                    self.info('querying faied!')
                     return json.dumps(table_info_ice)
+                self.info('checking version...')
                 self.m_table = table_info_ice = table_info_ice["data"].copy()
                 if not table_info_bd or 'gateway_uuid' in table_info_bd and table_info_bd["gateway_uuid"] != \
                         table_info_ice["gateway_uuid"]:
@@ -938,6 +942,7 @@ class IOTOSys(CallbackReceiver, JLib):
                         self.m_table = table_info_ice
                         with open(uuid + ".tb", "wb") as f:
                             f.write((json.dumps(self.m_table, ensure_ascii=False, indent=4)).encode('utf8'))
+                self.info('init engine...')
                 result = self.engineInit(json.dumps(self.m_table))
                 self.hb = HeartBeatThread(iceService=self.iceService, server_time=table_info_ice["timestamp"])
                 self.hb.start()
@@ -1270,7 +1275,7 @@ class IOTOSys(CallbackReceiver, JLib):
 
     # 开始采集
     def engineRun(self):
-        self.warn(u'采集引擎启动..')
+        self.warn(u'驱动采集引擎启动..') 
         for i in self.threading_list:
             i.setDaemon(True)
             i.start()

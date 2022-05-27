@@ -101,8 +101,11 @@ class ModbusDriver(IOTOSDriverI):
                 elif format.find('?') != -1:           #对于功能号1、2的开关量读，开关个数，对于这种bool开关型，个数就不是返回字节数的两倍了！返回的字节个数是动态的，要字节数对应的位数总和，能覆盖传入的个数数值！
                     quantity *= 1
                     format = ''                        #实践发现，对于bool开关型，传入开关量个数就行，format保留为空！如果format设置为 "?"或"8?"、">?"等，都会解析不正确！！
+                quantity = int(quantity)
                 self.debug('>>>>>>' + '(Serial-' + str(self.comport) + ')' + str(devid) + ' ' + str(funid) + ' ' + str(regad) + ' ' + str(quantity) + ' ' + str(format))
                 rtu_ret = self.master.execute(devid, funid, regad, quantity,data_format=format)
+                self.debug('<<<<<<')
+                self.debug(rtu_ret)
 
                 #added by lrq 20200116 私有modbus解析支持，煤矸石项目
                 if 'private' in cfgtmp['param'].keys():
@@ -174,10 +177,11 @@ class ModbusDriver(IOTOSDriverI):
             else:
                 return ()   #注意，这种情况下不是采集错误，如果返回None，那么会当作采集错误处理，进行采集错误计数了！！
         except ModbusInvalidResponseError as e:
+            self.error('<<<<<<')
             self.error(e)
             return None
         except Exception as e:
-            self.error(e.message)
+            self.error(e)
             return None
 
     # 3、控制 数据点配置

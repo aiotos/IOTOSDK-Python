@@ -91,7 +91,7 @@ class ModbusDriver(IOTOSDriverI):
             self.master = modbus_rtu.RtuMaster(self.__serial.serial)
             self.master.set_timeout(5)
             self.master.set_verbose(False)
-            self.debug(self.sysAttrs['name'] + u' 串口' + self.__serial.portName() + u'已打开！')
+            self.warn(self.sysAttrs['name'] + u' 串口' + self.__serial.portName() + u'已打开！')
 
             self.zm.pauseCollect = True
             # 实例化硬件心跳线程
@@ -107,6 +107,16 @@ class ModbusDriver(IOTOSDriverI):
         datastr = self.str2hex(data)
         self.sourceDataIn = data
         self.info("Master < < < < < < Device: " + datastr)
+
+        #private code for some kind of non-standard modbus rtu response，can be removed!
+        #sapmle：13 01 00 01 00 00 6e b8 / 13 01 00 01 00 FF 2E F8
+        if struct.unpack('BBBBB', data[:5]) == (0x13,0x01,0x00,0x01,0x00):
+            if self.unpack('B', data[5]) == 0x00:
+                data = '\x13\x01\x01\x00\x54\xf0'
+            elif self.unpack('B', data[5]) == 0xff:
+                data = '\x13\x01\x01\xff\x14\xb0'
+            self.info(self.str2hex(data))
+
         self.__serial.send(data)
         # if datastr[0] == '1' or datastr[0] == '2' or datastr[0] == '7':
         #     # self.__serial.send(data)
@@ -116,7 +126,7 @@ class ModbusDriver(IOTOSDriverI):
 
     #tcp <= 串口2
     def serialCallback(self,data):
-        self.info("Master > > > > > > Device: " + self.str2hex(data))
+        self.error("Master > > > > > > Device: " + self.str2hex(data))
         self.__tcpServer.send(data)
 
     #连接状态回调

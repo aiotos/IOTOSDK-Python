@@ -96,6 +96,11 @@ class Simulator(IOTOSDriverI):
             else:
                 assert 0
             valtmp = str(strlisttmp[itmp])
+        elif typetmp == "JSON":
+            d = {}
+            for i in range(4):
+                d['k{}'.format(i)] = random.randint(0,99)
+            valtmp = d
         else:
             assert 0
 
