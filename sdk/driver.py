@@ -38,8 +38,7 @@ class IOTOSDriverI(JLib):
 
     def __pubLocal(self, id, value):
         for systmp in self.data2subs[id]:
-            t = RunLocalPubThread(self.zm, self.event, self.zm.m_dev2driver[self.zm.uuid + '.' + systmp],
-                                  self.sysId + "." + id, value)
+            t = RunLocalPubThread(self.zm, self.event, self.zm.m_dev2driver[self.zm.uuid + '.' + systmp],self.sysId + "." + id, value)
             t.setDaemon(True)
             t.start()
 
@@ -156,7 +155,7 @@ class IOTOSDriverI(JLib):
             if json.loads(ret)['code'] == 0:
                 return self.zm.PubMsg(self.zm.uuid + '.' + id, value, timestamp)
         elif len(ids) == 3:
-            return self.Event_syncPubMsg(id, value)
+            return self.zm.PubMsg(id, value)
 
     def setValues(self, values):
         """批量上报数据点

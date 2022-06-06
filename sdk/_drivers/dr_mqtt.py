@@ -15,13 +15,12 @@ from mqtt.iotos_shadow import ShadowTopic, Shadow, MqttClient
 class MqttDriver(IOTOSDriverI):
     __mqttClient = None
     __shadowTopic = None
+    __pointList = []
 
     # 1、通信初始化
     def InitComm(self, attrs):
 
-        self.online(True)
-
-        # self.setValue('zkys-SimuDev.字符串1', "zws")
+        self.online(True)        
         t = threading.Thread(target=self.mqtt_run,
                              args=(attrs,), name='mqtt-server')
         t.start()
@@ -39,30 +38,76 @@ class MqttDriver(IOTOSDriverI):
         return self.__shadowTopic
 
     def mqtt_run(self, attrs):
-        ionode_uuid = attrs.get('gateway_uuid')
-        device_oid = attrs.get('device_oid')
+        ionode_uuid = attrs['gateway_uuid']
+        device_oid = attrs['device_oid']
         client_id = 'device_' + ionode_uuid + '_' + device_oid
 
         self.logger.info(('clientId', client_id))
         self.__mqttClient = MqttClient(client_id=client_id)
-        self.mqttClient.connect('mqtt.iot-os.net', 1883, 600)  # 600为keepalive的时间间隔
+        self.__mqttClient.username_pw_set('admin', 'public')
+        self.__mqttClient.connect('sys.aiotos.net', 1883, 600)  # 600为keepalive的时间间隔
         self.__shadowTopic = ShadowTopic(ionode_uuid + '/' + device_oid)
-        self.mqttClient.subscribe(self.shadowTopic.update, qos=0)
-        print self.shadowTopic.update
-        self.mqttClient.subscribe(self.shadowTopic.get, qos=0)
-        print self.shadowTopic.get
-        # self.__mqttClient.on_log = self.mqtt_on_log
-        self.mqttClient.on_message = self.mqtt_on_message
-        self.mqttClient.loop_start()  # 保持连接
+        self.__mqttClient.on_connect  = self.mqtt_on_connect 
+        self.__mqttClient.on_disconnect = self.mqtt_on_disconnect
+        self.__mqttClient.on_log = self.mqtt_on_log
+        self.__mqttClient.loop_start()  # 保持连接
 
     def mqtt_on_log(self, client, userdata, level, buf):
-        self.logger.info((client, userdata, level, buf))
+        # self.logger.info((client, userdata, level, buf))
+        pass
+
+    def mqtt_on_connect(self,client, userdata, flag, rc):
+        if rc == 0:
+            # 连接成功
+            self.warn("Connection successful")
+            self.mqttClient.subscribe(self.shadowTopic.update, qos=0)
+            self.warn(self.shadowTopic.update)
+            self.mqttClient.subscribe(self.shadowTopic.get, qos=0)
+            self.warn(self.shadowTopic.get)
+
+            #初始遍历一次，实现逐个数据点订阅
+            self.setPauseCollect(False)
+            self.setCollectingOneCircle(True)
+        
+            self.mqttClient.on_message = self.mqtt_on_message
+            self.mqttClient.on_subscribe = self.mqtt_on_subscribe
+            self.mqttClient.on_unsubscribe = self.mqtt_on_unsubscribe
+        
+        elif rc == 1:
+            # 协议版本错误
+            self.warn("Protocol version error")
+        elif rc == 2:
+            # 无效的客户端标识
+            self.warn("Invalid client identity")
+        elif rc == 3:
+            # 服务器无法使用
+            self.warn("server unavailable")
+        elif rc == 4:
+            # 错误的用户名或密码
+            self.warn("Wrong user name or password")
+        elif rc == 5:
+            # 未经授权
+            self.warn("unaccredited")
+        self.warn("Connect with the result code " + str(rc)) 
+        
+    def mqtt_on_disconnect(self,client, userdata, rc):
+        # rc == 0回调被调用以响应disconnect（）调用
+        # 如果以任何其他值断开连接是意外的，例如可能出现网络错误。
+        if rc != 0:
+            self.warn("Unexpected disconnection %s" % rc) 
+            
+    def mqtt_on_subscribe(self,client, userdata, mid, granted_qos):
+        self.warn("on_Subscribed: 订阅成功" + str(mid) + " " + str(granted_qos))
+        
+    def mqtt_on_unsubscribe(self,client, userdata, mid):
+        self.warn("on_unsubscribe, mid: " + str(mid)) 
 
     def mqtt_on_message(self, client, userdata, message):
         # self.logger.info((message.qos, message.topic, json.dumps(message.payload)))
         self.logger.info(client.client_id)
         self.logger.info(message.topic)
-        self.logger.info(json.dumps(message.payload,indent=3))
+        self.warn(message.payload)
+        # self.logger.info(json.dumps(message.payload,indent=3))
 
         if message.topic == self.shadowTopic.get:
             new_data = {}
@@ -105,11 +150,19 @@ class MqttDriver(IOTOSDriverI):
                         {'id': self.name_to_uuid(key), 'value': value})
                 res = self.setValues(value_list)
                 self.logger.info(res)
+                
+        elif self.__pointList.index(message.topic) != -1:
+            self.warn(message.topic + ':' + str(message.payload))
+            self.warn(self.setValue(message.topic, self.valueTyped(message.topic.split('.')[2],str(message.payload, encoding='utf-8'))))
 
-    # # 2、采集
-    # def Collecting(self, dataId):
-    #     return None
-    #     return (time.time(),)
+    # 2、采集
+    def Collecting(self, dataId):
+        
+        pointtmp = self.pointId(dataId)
+        self.mqttClient.subscribe(pointtmp, qos=0)
+        self.__pointList.append(pointtmp)
+        
+        return ()
 
     # 3、控制
     # 事件回调接口，其他操作访问
