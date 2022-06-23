@@ -95,6 +95,8 @@ class MqttDriver(IOTOSDriverI):
         # 如果以任何其他值断开连接是意外的，例如可能出现网络错误。
         if rc != 0:
             self.warn("Unexpected disconnection %s" % rc) 
+        self.error('MQTT Disconnected!') 
+        self.__mqttClient.connect('sys.aiotos.net', 1883, 600)  # 600为keepalive的时间间隔
             
     def mqtt_on_subscribe(self,client, userdata, mid, granted_qos):
         self.warn("on_Subscribed: 订阅成功" + str(mid) + " " + str(granted_qos))
@@ -153,7 +155,10 @@ class MqttDriver(IOTOSDriverI):
                 
         elif self.__pointList.index(message.topic) != -1:
             self.warn(message.topic + ':' + str(message.payload))
-            self.warn(self.setValue(message.topic, self.valueTyped(message.topic.split('.')[2],str(message.payload, encoding='utf-8'))))
+            try:
+                self.warn(self.setValue(message.topic, self.valueTyped(message.topic.split('.')[2],str(message.payload, encoding='utf-8'))))
+            except Exception as e:
+                self.warn(self.setValue(message.topic, self.valueTyped(message.topic.split('.')[2],str(message.payload))))
 
     # 2、采集
     def Collecting(self, dataId):
