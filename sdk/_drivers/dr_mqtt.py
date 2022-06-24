@@ -194,6 +194,8 @@ class MqttDriver(IOTOSDriverI):
     def Event_setData(self, dataId, value):
 
         # winsound.Beep(500,100)
+        res = self.mqttClient.publish(self.pointId(dataId), payload=value)
+        self.logger.info((res))
 
         return json.dumps({'code': 0, 'msg': '', 'data': ''})
 
